@@ -43,3 +43,11 @@ test('جولة مكررة أو بدرجة خارج النطاق تُرفض', asy
   const bad = await handle(db, { method: 'POST', path: '/ops', body: { ops: [{ t: 'add', round: { ...add.round, id: 'aaaaaaaaaaaaaaaaaa', score: 5000 } }] } }, {});
   assert.deepEqual(bad.body.results, ['bad']);
 });
+
+test('تُرفض الجولات بعد بلوغ سقف اليوم', async () => {
+  const db = memDb();
+  const round = id => ({ t: 'add', round: { ...add.round, id } });
+  const ops = [round('a'.repeat(18)), round('b'.repeat(18)), round('c'.repeat(18))];
+  const r = await handle(db, { method: 'POST', path: '/ops', body: { ops } }, { MAX_ROUNDS_PER_DAY: '2' });
+  assert.deepEqual(r.body.results, ['ok', 'ok', 'full']);
+});

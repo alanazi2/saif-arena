@@ -55,7 +55,7 @@ export function createServer(cfg, db) {
       if (pathname === '/api' || pathname.startsWith('/api/')) {
         let body = null;
         if (req.method === 'POST') { try { body = JSON.parse(await readBody(req)); } catch (e) { if (e.code === 'E_BODY') return sendJson(res, 413, { ok: false }); body = null; } }
-        const out = await handle(db, { method: req.method, path: pathname.replace(/^\/api/, '') || '/', body, pin: String(req.headers['x-admin-pin'] || '') }, { ADMIN_PIN: cfg.adminPin });
+        const out = await handle(db, { method: req.method, path: pathname.replace(/^\/api/, '') || '/', body, pin: String(req.headers['x-admin-pin'] || '') }, { ADMIN_PIN: cfg.adminPin, MAX_ROUNDS_PER_DAY: cfg.maxRoundsPerDay });
         /* الرابط العام يأتي من APP_URL إن وُجد (يتقدّم على القيمة المخزّنة من لوحة الإدارة) */
         if (cfg.appUrl && pathname === '/api/data' && out.status === 200 && out.body && out.body.cfg) out.body.cfg.publicUrl = cfg.appUrl;
         return sendJson(res, out.status, out.body);

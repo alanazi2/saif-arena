@@ -1,4 +1,6 @@
 /* كل الإعدادات من متغيرات البيئة فقط (12-factor). لا ملف .env في الحاوية. */
+import { DEFAULT_MAX_ROUNDS_PER_DAY } from './core.mjs';
+
 const int = (v, d) => { const n = parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : d; };
 const bool = (v, d = false) => (v == null || v === '' ? d : /^(1|true|yes|on)$/i.test(String(v)));
 
@@ -12,6 +14,7 @@ export function loadConfig(env = process.env) {
     appUrl: (env.APP_URL || '').replace(/\/+$/, ''),
     adminPin: String(env.ADMIN_PIN || ''),
     runMigrations: bool(env.RUN_MIGRATIONS, false),
+    maxRoundsPerDay: int(env.MAX_ROUNDS_PER_DAY, DEFAULT_MAX_ROUNDS_PER_DAY),
     shutdownGraceMs: int(env.SHUTDOWN_GRACE_SECONDS, 25) * 1000,
     s3PublicUrl: (env.S3_PUBLIC_URL || '').replace(/\/+$/, ''),
     db: {

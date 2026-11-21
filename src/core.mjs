@@ -2,6 +2,8 @@
 const GAMES = ['puzzle', 'network', 'b1', 'b2', 'b3', 'b4', 'b5', 'vuln', 'defend', 'forensic', 'deepfake', 'ml', 'pattern'];
 const TIERS = ['gold', 'silver', 'bronze'];
 const ADMIN_OPS = new Set(['hide', 'close', 'cfg', 'reset']);
+/* كل الجولات في صف واحد يُعاد كتابته مع كل عملية ويُرسل كاملًا لكل شاشة، و«add» بلا رمز إدارة، فبلا سقف يكبر الصف بلا حد */
+export const DEFAULT_MAX_ROUNDS_PER_DAY = 2000;
 const dayOf = ts => new Date(ts + 3 * 3600e3).toISOString().slice(0, 10);   // توقيت الرياض
 
 export function cleanName(n) {
@@ -19,7 +21,7 @@ function view(d, admin) {
   };
 }
 
-function applyOp(d, op, admin, now) {
+function applyOp(d, op, admin, now, quota) {
   if (!op || typeof op !== 'object') return 'bad';
   if (ADMIN_OPS.has(op.t) && !admin) return 'forbidden';
   switch (op.t) {
@@ -29,6 +31,8 @@ function applyOp(d, op, admin, now) {
       const max = Math.round(+r.max), score = Math.round(+r.score);
       if (!(max >= 1 && max <= 2000) || !(score >= 0 && score <= max)) return 'bad';
       if (d.rounds.some(x => x.id === r.id)) return 'dup';
+      if (quota.left <= 0) return 'full';
+      quota.left--;
       d.rounds.push({ id: r.id, day: dayOf(now), ts: now, name: '', game: r.game, screen: +r.screen, score, max, tier: r.tier, lv: [1, 2, 3].includes(+r.lv) ? +r.lv : 1, hidden: false });
       return 'ok';
     }
@@ -64,7 +68,12 @@ export async function handle(db, { method, path, body, pin }, env = {}) {
   if (path === '/ops' && method === 'POST') {
     const ops = body && Array.isArray(body.ops) ? body.ops.slice(0, 50) : null;
     if (!ops) return json(400, { ok: false });
-    const results = await db.update(d => { const now = Date.now(); return ops.map(op => applyOp(d, op, admin, now)); });
+    const perDay = Number(env.MAX_ROUNDS_PER_DAY) > 0 ? Number(env.MAX_ROUNDS_PER_DAY) : DEFAULT_MAX_ROUNDS_PER_DAY;
+    const results = await db.update(d => {
+      const now = Date.now(), today = dayOf(now);
+      const quota = { left: perDay - d.rounds.filter(x => x.day === today).length };
+      return ops.map(op => applyOp(d, op, admin, now, quota));
+    });
     return json(200, { ok: true, results });
   }
   return json(404, { ok: false });
